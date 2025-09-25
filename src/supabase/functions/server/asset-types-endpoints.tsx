@@ -1,0 +1,119 @@
+// ============================================================================
+// ASSET TYPES ENDPOINTS - ADD TO SERVER
+// ============================================================================
+
+// GET /asset-types - List all asset types
+app.get("/make-server-2e05cbde/asset-types", async (c) => {
+  try {
+    console.log("📋 Server: GET asset-types request received");
+
+    // Check authentication
+    const token = await validateAuthToken(c, "Get asset-types");
+    if (!token) {
+      return c.json(
+        { error: "Token de autenticación requerido" },
+        401,
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("asset_types")
+      .select("id, name, description, created_at")
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.log("❌ Server: Asset types error:", error);
+      throw error;
+    }
+
+    console.log(
+      `✅ Server: Retrieved ${data.length} asset types`,
+    );
+    return c.json(data);
+  } catch (error) {
+    console.log("💥 Error fetching asset types:", error);
+    return c.json(
+      { error: "Failed to fetch asset types" },
+      500,
+    );
+  }
+});
+
+// POST /asset-types - Create new asset type
+app.post("/make-server-2e05cbde/asset-types", async (c) => {
+  try {
+    console.log("📋 Server: POST asset-types request received");
+
+    // Check authentication
+    const token = await validateAuthToken(
+      c,
+      "Create asset-type",
+    );
+    if (!token) {
+      return c.json(
+        { error: "Token de autenticación requerido" },
+        401,
+      );
+    }
+
+    const body = await c.req.json();
+    console.log("📋 Server: Request body:", body);
+
+    const { name, description } = body;
+
+    // Validate required fields
+    if (!name?.trim()) {
+      return c.json(
+        {
+          error: "El nombre del tipo de equipo es obligatorio",
+        },
+        400,
+      );
+    }
+
+    // Check if asset type already exists
+    const { data: existing } = await supabase
+      .from("asset_types")
+      .select("id, name")
+      .eq("name", name.trim())
+      .single();
+
+    if (existing) {
+      return c.json(
+        {
+          error: `Ya existe un tipo de equipo con el nombre "${name.trim()}"`,
+        },
+        400,
+      );
+    }
+
+    // Create the asset type
+    const { data, error } = await supabase
+      .from("asset_types")
+      .insert({
+        name: name.trim(),
+        description: description?.trim() || null,
+      })
+      .select("id, name, description, created_at")
+      .single();
+
+    if (error) {
+      console.log("❌ Server: Create asset type error:", error);
+      throw error;
+    }
+
+    console.log(
+      "✅ Server: Asset type created successfully:",
+      data.id,
+    );
+    return c.json(data);
+  } catch (error) {
+    console.log("💥 Error creating asset type:", error);
+    return c.json(
+      {
+        error: "Failed to create asset type: " + error.message,
+      },
+      500,
+    );
+  }
+});
